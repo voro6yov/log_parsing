@@ -1,0 +1,44 @@
+version: "3.8"
+services:
+  web:
+    container_name: nginx
+    image: nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - fluent-bit
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: nginx.logs
+
+  fluent-bit:
+    container_name: fluent-bit
+    image: fluent/fluent-bit
+    ports:
+      # необходимо открыть порты, которые используются плагином forward
+      - 24224:24224
+      - 24224:24224/udp
+    volumes:
+      # добавляем конфигурацию в контейнер
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./fluent-bit/parsers.conf:/fluent-bit/parsers/parsers.conf
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    environment:
+      - "discovery.type=single-node"
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.10.1
+    depends_on:
+      - "elasticsearch"
+    ports:
+      - "5601:5601"
